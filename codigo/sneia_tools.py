@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 class SNEIATools():
     """ Esta clase se encarga de agrupar los métodos necesarios para el tratamiento de EEG
     """
-    
+
     def read_data(self, data: np.ndarray):
         """ Retorna los indices y los electrodos de un EEG (data)
 
@@ -18,7 +18,7 @@ class SNEIATools():
             data (np.ndarray): Datos de un EEG
 
         Returns:
-            tuple (np.array, np.array): 
+            tuple (np.array, np.array):
                 (indices_muestra, electrodos)
                 electrodos es un arreglo de arreglos, cada uno representa los datos de un electrodo
         """
@@ -34,7 +34,7 @@ class SNEIATools():
         """ Retorna la GFP de un grupo de electrodos
 
         Args:
-            electrodes (np.ndarray): 
+            electrodes (np.ndarray):
                 Contiene los valores de un EEG, separado por electrodos
 
         Returns:
@@ -43,11 +43,11 @@ class SNEIATools():
         N = electrodes.shape[1]
         v_mean = np.mean(electrodes, axis=1)
         GFP = np.zeros(electrodes.shape[0])
-        
+
         for i in range(0,N):
             GFP = GFP+(electrodes[:,i]-v_mean)**2
         GFP = np.sqrt(GFP/N)
-        
+
         return GFP
 
     def get_microstates_sequences(self, gfp: np.ndarray, percentage: float, sample_frq: int):
@@ -59,8 +59,8 @@ class SNEIATools():
             percentage (float): Porcentaje de umbral
 
         Returns:
-            tuple (np.array, np.array): 
-                (indices_sequencia, valores_sequencia) 
+            tuple (np.array, np.array):
+                (indices_sequencia, valores_sequencia)
                 Ambos arreglos pueden ser NO homogeneos. Se crean de tipo object
         """
         min_length_sequence = np.ceil(60*sample_frq/1000)
@@ -77,7 +77,7 @@ class SNEIATools():
                 if len(sequence) >= min_length_sequence:
                     sequence_indexes.append(sequence)
                 sequence = np.array([indices_mayores[0][i]], dtype=int)
-                
+
         if len(sequence) >= min_length_sequence:
             sequence_indexes.append(sequence)
 
@@ -89,8 +89,8 @@ class SNEIATools():
 
         return sequence_indexes, sequence_values
 
-    def get_microstates_samples(self, gfp: np.ndarray, percentage: float,  sample_frq: int):
-        """ Retorna una tupla con los indices y los valores de las muestras del 
+    def get_microstates_samples(self, gfp: np.ndarray, percentage: float, sample_frq: int):
+        """ Retorna una tupla con los indices y los valores de las muestras del
             gfp que superan el umbral, sin separar por microestado
 
         Args:
@@ -103,7 +103,7 @@ class SNEIATools():
         min_length_sequence = np.ceil(60*sample_frq/1000)
         max_value = np.max(gfp)
         indices_mayores = np.where(gfp > max_value*percentage)
-        
+
         sequences = []
         sequence = []
 
@@ -117,7 +117,7 @@ class SNEIATools():
 
         if len(sequence) >= min_length_sequence:
             sequences += sequence
-        
+
         return np.array(sequences), gfp[sequences]
 
     def get_electrodes_value(self, indices: np.array, electrodes: np.array): # type: ignore
@@ -128,40 +128,58 @@ class SNEIATools():
             electrodes (np.array): Array con los valores de los electrodos
 
         Returns:
-            np.array: 
+            np.array:
                 Array que contiene los valores de los electrodos por cada muestra
                 que supera el umbral. Si los indices están separados por microestado,
                 el array también lo estará. En el caso de que NO estén
                 separados por microestado, al array contiene todas las muestras independientes
         """
         electrodes_values = []
-        
+
         for indice in indices:
             electrodes_values.append(electrodes[indice])
-        
+
         return np.array(electrodes_values, dtype=object)
-    
-    def get_time_series(self, value_matrix):
-        """ Aplicación de kmeans para agrupar una lista de microestaditos alrededor
-            de 4 microestados
-        
+
+    def apply_kmeans(self, value_matrix):
+        """ Aplicación de kmeans para agrupar una lista de microestados alrededor
+            de 4 microestados generales.
+
         Args:
             value_matrix (np.array):
-                Matriz de valores de EEG, separados por microestado. Es decir, cada 
-                fila de la matriz representa los n valores para cada uno de los n 
+                Matriz de valores de EEG, separados por microestado. Es decir, cada
+                fila de la matriz representa los n valores para cada uno de los n
                 electrodos del EEG que representan un microestado
-                
+
         Returns:
-            time_series (por revisar): Series de tiempo
+            df (pandas.DataFrame):
+                Dataframe que contiene la matriz de valores de la EEG que representan
+                un microestado y el cluster al que pertenece cada uno
         """
         scaler = StandardScaler()
         value_matrix_norm = scaler.fit_transform(value_matrix)
         kmeans = KMeans(n_clusters=4, random_state=42)
         kmeans.fit(value_matrix_norm)
-        
+
         df = pd.DataFrame(value_matrix)
         df['cluster'] = kmeans.labels_
 
+        return df
+
+    def get_time_series(self, df):
+        """ Aplicación de kmeans para agrupar una lista de microestados alrededor
+            de 4 microestados generales.
+
+        Args:
+            df (pandas.DataFrame):
+                Dataframe que contiene la matriz de valores de la EEG que representan
+                un microestado y el cluster al que pertenece cada uno
+
+        Returns:
+            time_series (list): 
+                Lista que contiene los microestados separados por el cluster al que 
+                pertenece. Cada serie de tiempo representa un cluster
+        """
         time_series = []
 
         for i in range(4):
@@ -169,7 +187,7 @@ class SNEIATools():
             time_series.append(cluster_data.values)
 
         return time_series
-    
+
     def time_series_topomap(self, serie, channels, freq: int, standard: str):
         """ Imprime mapa topográfico a partir de una serie de tiempo
         
