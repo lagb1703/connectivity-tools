@@ -141,7 +141,7 @@ class SNEIATools():
 
         return np.array(electrodes_values, dtype=object)
 
-    def apply_kmens(self, value_matrix):
+    def apply_kmeans(self, value_matrix):
         """ Aplicación de kmeans para agrupar una lista de microestados alrededor
             de 4 microestados generales.
 
