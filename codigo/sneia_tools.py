@@ -50,94 +50,43 @@ class SNEIATools():
 
         return GFP
 
-    def get_microstates_sequences(self, gfp: np.ndarray, percentage: float, sample_frq: int):
+    def get_microstates(self, gfp: np.ndarray):
         """ Retorna una tupla con los indices y los valores de la GFP que superan el
-            umbral, separados por microestado
+            umbral
 
         Args:
             gfp (np.ndarray): Potencia de campo global GFP
-            percentage (float): Porcentaje de umbral
 
         Returns:
             tuple (np.array, np.array):
-                (indices_sequencia, valores_sequencia)
-                Ambos arreglos pueden ser NO homogeneos. Se crean de tipo object
+                (indices, valores)
+                Ambos arreglos pueden ser NO homogeneos. Uno es un array de indices 
+                y el otro es un array tipo objeto de valores de gfp correspondientes 
+                a esos indices
         """
-        min_length_sequence = np.ceil(60*sample_frq/1000)
-        max_value = np.max(gfp)
-        indices_mayores = np.where(gfp > max_value*percentage)
-        
-        sequence_indexes = []
-        sequence = np.empty((0,), dtype=int)
+        upper_indices = np.where(gfp > np.mean(gfp)+2*np.std(gfp))
 
-        for i in range(len(indices_mayores[0])):
-            if i == 0 or indices_mayores[0][i] == indices_mayores[0][i-1] + 1:
-                sequence = np.append(sequence, indices_mayores[0][i])
-            else:
-                if len(sequence) >= min_length_sequence:
-                    sequence_indexes.append(sequence)
-                sequence = np.array([indices_mayores[0][i]], dtype=int)
-
-        if len(sequence) >= min_length_sequence:
-            sequence_indexes.append(sequence)
-
-        sequence_indexes = np.array(sequence_indexes, dtype=object)
-        sequence_values = np.array(
-            [gfp[sequence_indexes[i]] for i in range(len(sequence_indexes))],
+        indices = np.array(upper_indices)
+        values = np.array(
+            [gfp[index] for index in upper_indices],
             dtype=object
         )
 
-        return sequence_indexes, sequence_values
+        return indices, values
 
-    def get_microstates_samples(self, gfp: np.ndarray, percentage: float, sample_frq: int):
-        """ Retorna una tupla con los indices y los valores de las muestras del
-            gfp que superan el umbral, sin separar por microestado
-
-        Args:
-            gfp (np.ndarray): Potencia de campo global GFP
-            percentage (float): Porcentaje de umbral
-
-        Returns:
-            tuple (np.array, np.array): (indices_muestras, valores_muestras)
-        """
-        min_length_sequence = np.ceil(60*sample_frq/1000)
-        max_value = np.max(gfp)
-        indices_mayores = np.where(gfp > max_value*percentage)
-
-        sequences = []
-        sequence = []
-
-        for i in range(len(indices_mayores[0])):
-            if i == 0 or indices_mayores[0][i] == indices_mayores[0][i-1] + 1:
-                sequence.append(indices_mayores[0][i])
-            else:
-                if len(sequence) >= min_length_sequence:
-                    sequences += sequence
-                sequence = [indices_mayores[0][i]]
-
-        if len(sequence) >= min_length_sequence:
-            sequences += sequence
-
-        return np.array(sequences), gfp[sequences]
-
-    def get_electrodes_value(self, indices: np.array, electrodes: np.array): # type: ignore
+    def get_electrodes_value(self, indices: np.array, electrodes: np.array):
         """ Retorna un array con los valores de cada electrodo para los indices dados.
 
         Args:
-            indices (np.array): Indices separados por microestado
+            indices (np.array): Indices de los microestados
             electrodes (np.array): Array con los valores de los electrodos
 
         Returns:
             np.array:
                 Array que contiene los valores de los electrodos por cada muestra
-                que supera el umbral. Si los indices están separados por microestado,
-                el array también lo estará. En el caso de que NO estén
-                separados por microestado, al array contiene todas las muestras independientes
+                que supera el umbral (dadas por los indices)
         """
-        electrodes_values = []
-
-        for indice in indices:
-            electrodes_values.append(electrodes[indice])
+        electrodes_values = [electrodes[i] for i in indices]
 
         return np.array(electrodes_values, dtype=object)
 
