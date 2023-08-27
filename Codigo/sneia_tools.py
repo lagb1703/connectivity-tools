@@ -141,9 +141,9 @@ class SNEIATools():
 
         return np.array(electrodes_values, dtype=object)
 
-    def get_time_series(self, value_matrix):
-        """ Aplicación de kmeans para agrupar una lista de microestaditos alrededor
-            de 4 microestados
+    def apply_kmens(self, value_matrix):
+        """ Aplicación de kmeans para agrupar una lista de microestados alrededor
+            de 4 microestados generales.
 
         Args:
             value_matrix (np.array):
@@ -152,7 +152,9 @@ class SNEIATools():
                 electrodos del EEG que representan un microestado
 
         Returns:
-            time_series (por revisar): Series de tiempo
+            df (pandas.DataFrame):
+                Dataframe que contiene la matriz de valores de la EEG que representan
+                un microestado y el cluster al que pertenece cada uno
         """
         scaler = StandardScaler()
         value_matrix_norm = scaler.fit_transform(value_matrix)
@@ -162,6 +164,22 @@ class SNEIATools():
         df = pd.DataFrame(value_matrix)
         df['cluster'] = kmeans.labels_
 
+        return df
+
+    def get_time_series(self, df):
+        """ Aplicación de kmeans para agrupar una lista de microestados alrededor
+            de 4 microestados generales.
+
+        Args:
+            df (pandas.DataFrame):
+                Dataframe que contiene la matriz de valores de la EEG que representan
+                un microestado y el cluster al que pertenece cada uno
+
+        Returns:
+            time_series (list): 
+                Lista que contiene los microestados separados por el cluster al que 
+                pertenece. Cada serie de tiempo representa un cluster
+        """
         time_series = []
 
         for i in range(4):
