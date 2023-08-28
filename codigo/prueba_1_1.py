@@ -58,7 +58,7 @@ gfp = tools.get_gfp(electrodos)
 
 
 # Obtener los microestados (indices y valores en la gfp que superan el umbral)
-indexes, values = tools.get_microstates_michael(gfp)
+indexes, values = tools.get_microstates(gfp)
 print("microstates_indexes: (", len(indexes), ")\n", indexes)
 print("microstates_values: (", len(values), ")\n", values)
 electrodes_values = tools.get_electrodes_value(indexes, electrodos)
