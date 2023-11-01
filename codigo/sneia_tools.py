@@ -111,31 +111,26 @@ class SNEIATools():
         return num / den
 
     def k_means_modificado(self, datos, k=4, iteraciones=10):
-        # 1. Inicializar los centroides aleatoriamente.
         centroides = np.random.randint(-15, 15 + 1, size=(4, 64))
 
         GEV = []
 
         for i in range(iteraciones):
-            # 2. Calcular la correlación entre cada centroide y el resto de los puntos.
             asignacion_centroides = []
 
             for punto in datos:
                 correlaciones = [np.corrcoef(punto, centroide)[0, 1] for centroide in centroides]
                 asignacion_centroides.append(np.argmax(correlaciones))
 
-                # 3. Promediar los puntos asignados a cada centroide para crear nuevos centroides.
                 GEVi = 0
                 for j in range(k):
                     puntos_asignados = datos[np.array(asignacion_centroides) == i]
-                    if len(puntos_asignados) > 0:  # Evitar dividir por cero.
+                    if len(puntos_asignados) > 0:
                         centroides[j] = np.mean(puntos_asignados, axis=0)
 
-                # 4. Con esos puntos asignados calculo la GEV de cada cluster
                 GEVi += self.calcular_gev_cluster(puntos_asignados, centroides[i])
                 GEV.append(GEVi)
 
-        # 5. Añadir columna adicional con la asignación de los centroides.
         matriz_final = pd.DataFrame(
             np.hstack((datos, np.array(asignacion_centroides).reshape(-1, 1))),
             columns=[f'col_{i}' for i in range(64)] + ['centroide']
@@ -262,10 +257,7 @@ class SNEIATools():
         grouped_letters = []
         grouped_letters.append(vector[0])
 
-        # Iteramos desde el segundo elemento del original hasta el último
         for i in range(1, len(vector)):
-            # Si la letra actual es igual a la letra anterior en el nuevo vector,
-            # las concatenamos en el nuevo vector
             if vector[i] == vector[i - 1]:
                 grouped_letters[-1] += vector[i]
             else:
