@@ -1,3 +1,5 @@
+import csv
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -7,6 +9,126 @@ import scipy.io
 
 class SNEIATools():
     """ Esta clase se encarga de agrupar los métodos necesarios para el tratamiento de EEG """
+
+    def __init__(self):
+        self.general_microstates = None
+
+    def preprocess_from_sets(self, folder_path):
+        """ Preprocesamiento de los datos de un EEG en formato .set
+            Crea un archivo en formato CSV con los datos preprocesados y retorna la ruta
+            Para la base de datos: https://openneuro.org/datasets/ds003775/versions/1.2.1
+            Args:
+                folder_path (string):
+                    Ruta de la carpeta con los archivos .set a preprocesar
+        """
+        file_names = os.listdir(folder_path)
+
+        for name in file_names:
+            effective_path = f"{folder_path}/{name}"
+            self.preprocess_data(effective_path)
+
+    def preprocess_data(self, path: str):
+        """ Preprocesamiento de los datos de un EEG en formato .set
+            Crea un archivo en formato CSV con los datos preprocesados y retorna la ruta
+            Para la base de datos: https://openneuro.org/datasets/ds003775/versions/1.2.1
+
+        Args:
+            path (string):
+                Ruta del archivo .set a preprocesar
+
+        Returns:
+            string:
+                Ruta del archivo .csv preprocesado
+        """
+        if not path.endswith(".set"):
+            raise Exception("El archivo debe ser .set")
+
+        data = scipy.io.loadmat(path)
+        chanlocs = data['chanlocs']
+        ch_name = [chanlocs[0][i][0] for i in range(0,64)]
+        ch_names = [item[0] for item in ch_name]
+
+        signals = data['data']
+
+        first_layer_signals = signals[:,:,0]
+
+        transpose_signals = np.transpose(first_layer_signals)
+
+        transpose_signals = np.vstack((ch_names, transpose_signals))
+
+        index_sequence = np.arange(transpose_signals.shape[0]).reshape(-1, 1)
+
+        dataset_csv = np.hstack((index_sequence, transpose_signals))
+
+        csv_path = data["filename"][0].replace(".set", "_preprocess.csv")
+
+        np.savetxt(f"{path.rsplit('/', 1)[0]}/{csv_path}", dataset_csv, delimiter=',', fmt='%s')
+
+        return csv_path
+
+    def get_microstates(self, path: str):
+        """ Obtiene los microestados de un EEG en formato .csv
+            Además, crea un archivo .csv con los microestados y retorna los valores de los microestados
+
+            Args:
+                path (string):
+                    Ruta del archivo .csv a procesar
+
+            Returns:
+                tuple (pd.DataFrame, np.array):
+                    matriz_final (pd.DataFrame):
+                        DataFrame con los valores de los microestados
+                    centroids (np.array):
+                        Array con los centroides de los microestados
+        """
+        if not path.endswith(".csv"):
+            raise Exception("El archivo debe ser .csv")
+
+        _, _, electrodos = self.read_data(path)
+
+        gfp = self.get_gfp(electrodos)
+
+        index_max_gfp, _ = self.index_max_min(gfp)
+
+        electrodes_values = self.get_electrodes_value(index_max_gfp, electrodos)
+
+        electrodes_values = electrodes_values.astype(np.float64)
+
+        np.random.seed(1)
+
+        _, centroids = self.k_means_modificado(electrodes_values)
+
+        try:
+            with (
+                open(f"{path.rsplit('/', 1)[0]}/Microstates/{path.rsplit('/', 1)[1].replace('.csv', '_microstates.csv')}",
+                    'w', newline='') as microstates_file
+            ):
+                csv_writer = csv.writer(microstates_file)
+
+                for centroid in centroids:
+                    csv_writer.writerow(centroid)
+        except Exception as e:
+            print(f"Ocurrió un error: {str(e)}")
+
+        return f"{path.rsplit('/', 1)[0]}/Microstates"
+
+    def get_general_microstates(self, folder_path: str):
+
+        with open(folder_path, newline='') as microstates_folder:
+            file_names = os.listdir(microstates_folder)
+
+            data = []
+            centroids = []
+            for file_name in file_names:
+                with open(f"{folder_path}/{file_name}", newline='') as microstates_file:
+                    reader = csv.reader(microstates_file)
+                    for row in reader:
+                        centroids.append(row)
+                data.append(centroids)
+
+        self.general_microstates = self.clusterdeclustrs(data)
+
+        return self.general_microstates
 
     def read_data(self, path: str):
         """ Retorna los indices y los electrodos de un EEG (data)
@@ -74,7 +196,7 @@ class SNEIATools():
 
     def index_max_min(self, gfp):
         """ Retorna los indices de los maximos y minimos de la GFP
-        
+
         Args:
             gfp (np.array): Potencia de campo global GFP
 
@@ -142,19 +264,19 @@ class SNEIATools():
         """ Imprime mapa topográfico a partir de una serie de tiempo en un instante dado
 
         Args:
-            serie (np.array): 
+            serie (np.array):
                 Serie de tiempo
 
-            instant (int): 
+            instant (int):
                 Instante de tiempo
 
-            channels (list): 
+            channels (list):
                 Lista de nombres de los canales
 
-            freq (int): 
+            freq (int):
                 Frecuencia de muestreo
 
-            standard (str): 
+            standard (str):
                 Tipo de montaje
         """
         ch_types_str = ['eeg']*len(channels)
@@ -166,42 +288,6 @@ class SNEIATools():
         _, ax = plt.subplots(figsize=(5, 5))
         mne.viz.plot_topomap(instant, raw_data.info, axes=ax)
         plt.show()
-
-    def preprocess_data(self, path: str):
-        """ Preprocesamiento de los datos de un EEG en formato .set
-            Crea un archivo en formato CSV con los datos preprocesados y retorna la ruta
-            Para la base de datos: https://openneuro.org/datasets/ds003775/versions/1.2.1
-
-        Args:
-            path (string):
-                Ruta del archivo .set a preprocesar
-
-        Returns:
-            string:
-                Ruta del archivo .csv preprocesado
-        """
-        data = scipy.io.loadmat(path)
-        chanlocs = data['chanlocs']
-        ch_name = [chanlocs[0][i][0] for i in range(0,64)]
-        ch_names = [item[0] for item in ch_name]
-
-        signals = data['data']
-
-        first_layer_signals = signals[:,:,0]
-
-        transpose_signals = np.transpose(first_layer_signals)
-
-        transpose_signals = np.vstack((ch_names, transpose_signals))
-
-        index_sequence = np.arange(transpose_signals.shape[0]).reshape(-1, 1)
-
-        dataset_csv = np.hstack((index_sequence, transpose_signals))
-
-        csv_path = data["filename"][0].replace(".set", "_preprocess.csv")
-
-        np.savetxt(csv_path, dataset_csv, delimiter=',', fmt='%s')
-
-        return csv_path
 
     def get_occurrence(self, vector):
         """ Retorna la ocurrencia de cada letra en un vector
