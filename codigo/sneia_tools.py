@@ -12,8 +12,9 @@ from sklearn.cluster import KMeans
 class SNEIATools():
     """ Esta clase se encarga de agrupar los métodos necesarios para el tratamiento de EEG """
 
-    def __init__(self):
+    def __init__(self, freq):
         self.general_microstates = None
+        self.freq = freq
 
     def preprocess_from_sets(self, folder_path):
         """ Preprocesamiento de los datos de un EEG en formato .set
@@ -171,7 +172,8 @@ class SNEIATools():
         """ Retorna los indices y los electrodos de un EEG (data)
 
         Args:
-            path (string): Ruta de un archivo .csv que contiene los datos de un EEG
+            path (string):
+                Ruta de un archivo .csv que contiene los datos de un EEG
 
         Returns:
             tuple (np.array, np.array):
@@ -217,8 +219,10 @@ class SNEIATools():
         """ Retorna un array con los valores de cada electrodo para los indices dados.
 
         Args:
-            indices (np.array): Indices separados por microestado
-            electrodes (np.array): Array con los valores de los electrodos
+            indices (np.array):
+                Indices separados por microestado
+            electrodes (np.array):
+                Array con los valores de los electrodos
 
         Returns:
             np.array:
@@ -265,42 +269,72 @@ class SNEIATools():
 
         return index_max_gfp, index_min_gfp
 
-    def calculate_gev_cluster(self, puntos_asignados, centroide):
-        GFP = self.get_gfp(puntos_asignados)
+    def calculate_gev_cluster(self, assigned_points, centroid):
+        """ Calculates the GEV of a cluster
+
+        Args:
+            assigned_points (np.array):
+                Matiz con los puntos asignados al cluster
+            centroid (np.array):
+                Centroide del cluster
+
+        Returns:
+            float:
+                GEV del cluster
+        """
+        GFP = self.get_gfp(assigned_points)
         num = 0
         den = 0
-        for j in range(0, puntos_asignados.shape[0]):
-            num += (GFP[j] * np.corrcoef(puntos_asignados[j, :], centroide)[0, 1]) ** 2
+        for j in range(0, assigned_points.shape[0]):
+            num += (GFP[j] * np.corrcoef(assigned_points[j, :], centroid)[0, 1]) ** 2
             den += (GFP[j]) ** 2
         return num / den
 
-    def k_means_modificado(self, datos, k=4, iteraciones=10):
-        centroides = np.random.randint(-15, 15 + 1, size=(4, 64))
+    def modified_k_means(self, data, k=4, iterations=10):
+        """
+        Obtiene los centroides y la matriz de electrodos etiquetada a partir de un EEG
+
+        Args:
+            data (np.array):
+                Valores de los electrdos correspondientes a un EEG
+            k (int, optional):
+                Número de Clusters. Por defecto 4.
+            iterations (int, optional):
+                Número de iteraciones. Por defecto 10.
+
+        Returns:
+            final_matrix, centroids (tuple):
+                final_matrix (pd.DataFrame):
+                    Matriz con los valores de los electrodos etiquetados
+                centroids (np.array):
+                    Centroides de los clusters
+        """
+        centroids = np.random.randint(-15, 15 + 1, size=(4, 64))
 
         GEV = []
 
-        for i in range(iteraciones):
-            asignacion_centroides = []
+        for i in range(iterations):
+            centroid_assignment = []
 
-            for punto in datos:
-                correlaciones = [np.corrcoef(punto, centroide)[0, 1] for centroide in centroides]
-                asignacion_centroides.append(np.argmax(correlaciones))
+            for point in data:
+                correlations = [np.corrcoef(point, centroid)[0, 1] for centroid in centroids]
+                centroid_assignment.append(np.argmax(correlations))
 
                 GEVi = 0
                 for j in range(k):
-                    puntos_asignados = datos[np.array(asignacion_centroides) == i]
-                    if len(puntos_asignados) > 0:
-                        centroides[j] = np.mean(puntos_asignados, axis=0)
+                    assigned_points = data[np.array(centroid_assignment) == i]
+                    if len(assigned_points) > 0:
+                        centroids[j] = np.mean(assigned_points, axis=0)
 
-                GEVi += self.calcular_gev_cluster(puntos_asignados, centroides[i])
+                GEVi += self.calculate_gev_cluster(assigned_points, centroids[i])
                 GEV.append(GEVi)
 
-        matriz_final = pd.DataFrame(
-            np.hstack((datos, np.array(asignacion_centroides).reshape(-1, 1))),
-            columns=[f'col_{i}' for i in range(64)] + ['centroide']
+        final_matrix = pd.DataFrame(
+            np.hstack((data, np.array(centroid_assignment).reshape(-1, 1))),
+            columns=[f'col_{i}' for i in range(64)] + ['centroid']
         )
 
-        return matriz_final, centroides
+        return final_matrix, centroids
 
     def get_topomap(self, serie, instant, channels, freq: int, standard: str):
         """ Imprime mapa topográfico a partir de una serie de tiempo en un instante dado
@@ -335,10 +369,12 @@ class SNEIATools():
         """ Retorna la ocurrencia de cada letra en un vector
 
         Args:
-            vector (np.array): Vector con letras correspondientes a los microestados
+            vector (np.array):
+                Vector con letras correspondientes a los microestados
 
         Returns:
-            ocurrence (dict): Diccionario con la ocurrencia de cada letra
+            ocurrence (dict):
+                Diccionario con la ocurrencia de cada letra
         """
         occurrence = {}
 
@@ -375,8 +411,10 @@ class SNEIATools():
         """ Retorna la duración promedio de cada letra en un vector
 
         Args:
-            vector (np.array): Vector con letras correspondientes a los microestados
-            freq (int): Frecuencia de muestreo
+            vector (np.array):
+                Vector con letras correspondientes a los microestados
+            freq (int):
+                Frecuencia de muestreo
 
         Returns:
             durations (dict): Diccionario con la duración promedio de cada letra
@@ -413,34 +451,79 @@ class SNEIATools():
 
         return durations
 
-    def get_metrics(self, vector, freq):
-        """ Retorna la cobertura, ocurrencia y duración de cada microestado
-            Args:
-                vector (np.array): Vector con letras correspondientes a los microestados
-                freq (int): Frecuencia de muestreo
+    def get_metrics(self, vector):
+        """
+        Retorna la cobertura, ocurrencia y duración de cada microestado
+
+        Args:
+            vector (np.array):
+                Vector con letras correspondientes a los microestados
+            freq (int):
+                Frecuencia de muestreo
+
+        Return:
+            tuple (dict, dict, dict):
+                (coverage, occurrence, durations)
+                coverage (dict):
+                    Diccionario con la cobertura de cada letra
+                occurrence (dict):
+                    Diccionario con la ocurrencia de cada letra
+                durations (dict):
+                    Diccionario con la duración promedio de cada letra
         """
         coverage = self.get_coverage(vector)
         occurrence = self.get_ocurrence(vector)
-        durations = self.get_duration(vector, freq)
+        durations = self.get_duration(vector, self.freq)
 
         return coverage, occurrence, durations
-    
-    def correlate_microstates(eeg_matrix, microstates):
+
+    def correlate_microstates(self, eeg_matrix, microstates):
         """
         Calcula la correlación entre cada punto de tiempo de la matriz EEG y los microestados.
-        Devuelve una lista con la letra del microestado que tiene la mayor correlación para cada punto de tiempo.
+        Args:
+            eeg_matrix (np.array):
+                Matriz con los datos del EEG.
+            microstates (list):
+                Lista con los microestados.
+
+        Returns:
+            np.array:
+                Matriz con las correlaciones de cada punto de tiempo con cada microestado.
         """
         num_timepoints = eeg_matrix.shape[1]
         matched_states = [''] * num_timepoints
         letter_mapping = ['A', 'B', 'C', 'D']
-        
+
         for t in range(num_timepoints):
-            correlation_aux = 0  # Reiniciar correlacion auxiliar
+            correlation_aux = 0
             for idx, m in enumerate(microstates):
                 correlation = pearsonr(eeg_matrix[:, t], m[:, 0])[0]
                 if correlation > correlation_aux:
                     correlation_aux = correlation
                     best_microstate = letter_mapping[idx]
             matched_states[t] = best_microstate
-        
+
         return matched_states
+
+    def evaluate_a_pacient(self, path: str):
+        """
+        Evalua un paciente a partir de su matriz EEG y los microestados generales de la clase.
+
+        Args:
+            path (str): Ruta del archivo .csv a procesar
+
+        Returns:
+            tuple (dict, dict, dict):
+                (coverage, occurrence, durations)
+                coverage (dict):
+                    Diccionario con la cobertura de cada letra
+                occurrence (dict):
+                    Diccionario con la ocurrencia de cada letra
+                durations (dict):
+                    Diccionario con la duración promedio de cada letra
+        """
+        _, _, electrodes = self.read_data(path)
+        matched_states = self.correlate_microstates(
+            electrodes, self.general_microstates)
+
+        return self.get_metrics(matched_states)
