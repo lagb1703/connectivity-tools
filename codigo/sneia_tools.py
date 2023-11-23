@@ -6,6 +6,7 @@ import pandas as pd
 import mne
 import scipy.io
 from scipy.stats import pearsonr
+from sklearn.cluster import KMeans
 
 
 class SNEIATools():
@@ -114,7 +115,16 @@ class SNEIATools():
         return f"{path.rsplit('/', 1)[0]}/Microstates"
 
     def get_general_microstates(self, folder_path: str):
+        """ Obtiene los microestados generales de un grupo de EEGs en formato .csv
 
+        Args:
+            folder_path (str):
+                Ruta de la carpeta con los archivos .csv a procesar
+
+        Returns:
+            general_microstates (list):
+                Array con los microestados generales
+        """
         with open(folder_path, newline='') as microstates_folder:
             file_names = os.listdir(microstates_folder)
 
@@ -125,11 +135,37 @@ class SNEIATools():
                     reader = csv.reader(microstates_file)
                     for row in reader:
                         centroids.append(row)
-                data.append(centroids)
+                data += centroids
 
-        self.general_microstates = self.clusterdeclustrs(data)
+        self.general_microstates = self.cluster_of_clusters(data)
+        with open(
+            f"{folder_path}/General/general_microstates.csv", 'w', newline=''
+        ) as general_microstates_file:
+            csv_writer = csv.writer(general_microstates_file)
+
+            for centroid in self.general_microstates:
+                csv_writer.writerow(centroid)
 
         return self.general_microstates
+
+    def cluster_of_clusters(self, data):
+        """ Agrupa los microestados en 4 clusters
+
+        Args:
+            data (list):
+                Lista con los microestados a clusterizar
+
+        Returns:
+            label, centroids (tuple):
+                Etiquetas de los clusters y centroides
+        """
+        cluster_matrix = np.array(data)
+
+        kmeans = KMeans(n_clusters=4, random_state=1)
+        kmeans.fit(cluster_matrix)
+        centroids = kmeans.cluster_centers_
+
+        return centroids
 
     def read_data(self, path: str):
         """ Retorna los indices y los electrodos de un EEG (data)
@@ -201,6 +237,11 @@ class SNEIATools():
         Args:
             gfp (np.array): Potencia de campo global GFP
 
+        Returns:
+            tuple (list, list):
+                (index_max_gfp, index_min_gfp)
+                index_max_gfp: Indices de los maximos de la GFP
+                index_min_gfp: Indices de los minimos de la GFP
         """
         np.append(gfp, 0)
         derivative = np.diff(gfp)
@@ -233,7 +274,7 @@ class SNEIATools():
             den += (GFP[j]) ** 2
         return num / den
 
-    def k_means_modified(self, datos, k=4, iteraciones=10):
+    def k_means_modificado(self, datos, k=4, iteraciones=10):
         centroides = np.random.randint(-15, 15 + 1, size=(4, 64))
 
         GEV = []
