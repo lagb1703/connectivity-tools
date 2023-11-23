@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import mne
 import scipy.io
+from scipy.stats import pearsonr
 
 
 class SNEIATools():
@@ -382,3 +383,23 @@ class SNEIATools():
         durations = self.get_duration(vector, freq)
 
         return coverage, occurrence, durations
+    
+    def correlate_microstates(eeg_matrix, microstates):
+        """
+        Calcula la correlación entre cada punto de tiempo de la matriz EEG y los microestados.
+        Devuelve una lista con la letra del microestado que tiene la mayor correlación para cada punto de tiempo.
+        """
+        num_timepoints = eeg_matrix.shape[1]
+        matched_states = [''] * num_timepoints
+        letter_mapping = ['A', 'B', 'C', 'D']
+        
+        for t in range(num_timepoints):
+            correlation_aux = 0  # Reiniciar correlacion auxiliar
+            for idx, m in enumerate(microstates):
+                correlation = pearsonr(eeg_matrix[:, t], m[:, 0])[0]
+                if correlation > correlation_aux:
+                    correlation_aux = correlation
+                    best_microstate = letter_mapping[idx]
+            matched_states[t] = best_microstate
+        
+        return matched_states
