@@ -224,7 +224,7 @@ class SNEIATools():
 
         return index_max_gfp, index_min_gfp
 
-    def calcular_gev_cluster(self, puntos_asignados, centroide):
+    def calculate_gev_cluster(self, puntos_asignados, centroide):
         GFP = self.get_gfp(puntos_asignados)
         num = 0
         den = 0
@@ -233,7 +233,7 @@ class SNEIATools():
             den += (GFP[j]) ** 2
         return num / den
 
-    def k_means_modificado(self, datos, k=4, iteraciones=10):
+    def k_means_modified(self, datos, k=4, iteraciones=10):
         centroides = np.random.randint(-15, 15 + 1, size=(4, 64))
 
         GEV = []
