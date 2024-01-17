@@ -99,11 +99,11 @@ class SNEIATools():
 
         np.random.seed(1)
 
-        _, centroids = self.k_means_modificado(electrodes_values)
+        _, centroids = self.modified_k_means(electrodes_values)
 
         try:
             with (
-                open(f"{path.rsplit('/', 1)[0]}/Microstates/{path.rsplit('/', 1)[1].replace('.csv', '_microstates.csv')}",
+                open(f"{path.rsplit('/', 2)[0]}/Microstates/{path.rsplit('/', 1)[1].replace('.csv', '_microstates.csv')}",
                     'w', newline='') as microstates_file
             ):
                 csv_writer = csv.writer(microstates_file)
@@ -114,6 +114,22 @@ class SNEIATools():
             print(f"Ocurrió un error: {str(e)}")
 
         return f"{path.rsplit('/', 1)[0]}/Microstates"
+
+    def get_centroids(self, folder_path: str):
+        """ Obtiene los microestados de un grupo de EEGs en formato .csv
+
+        Args:
+            folder_path (str):
+                Ruta de la carpeta con los archivos .csv a procesar
+
+        Returns:
+            general_microstates (list):
+                Array con los microestados generales
+        """
+        file_names = os.listdir(folder_path)
+
+        for file_name in file_names:
+            self.get_microstates(f"{folder_path}/{file_name}")
 
     def get_general_microstates(self, folder_path: str):
         """ Obtiene los microestados generales de un grupo de EEGs en formato .csv
@@ -126,17 +142,16 @@ class SNEIATools():
             general_microstates (list):
                 Array con los microestados generales
         """
-        with open(folder_path, newline='') as microstates_folder:
-            file_names = os.listdir(microstates_folder)
+        file_names = os.listdir(folder_path)
 
-            data = []
-            centroids = []
-            for file_name in file_names:
-                with open(f"{folder_path}/{file_name}", newline='') as microstates_file:
-                    reader = csv.reader(microstates_file)
-                    for row in reader:
-                        centroids.append(row)
-                data += centroids
+        data = []
+        centroids = []
+        for file_name in file_names:
+            with open(f"{folder_path}/{file_name}", newline='') as microstates_file:
+                reader = csv.reader(microstates_file)
+                for row in reader:
+                    centroids.append(row)
+            data += centroids
 
         self.general_microstates = self.cluster_of_clusters(data)
         with open(
@@ -205,6 +220,7 @@ class SNEIATools():
         Returns:
             GFP: Potencia de campo global de un grupo de electrodos
         """
+        print(electrodes.shape)
         N = electrodes.shape[1]
         v_mean = np.mean(electrodes, axis=1)
         GFP = np.zeros(electrodes.shape[0])
@@ -282,12 +298,15 @@ class SNEIATools():
             float:
                 GEV del cluster
         """
+        print("assigned_points", assigned_points, " - ", assigned_points.shape)
         GFP = self.get_gfp(assigned_points)
         num = 0
         den = 0
         for j in range(0, assigned_points.shape[0]):
             num += (GFP[j] * np.corrcoef(assigned_points[j, :], centroid)[0, 1]) ** 2
             den += (GFP[j]) ** 2
+        if den == 0:
+            return None
         return num / den
 
     def modified_k_means(self, data, k=4, iterations=10):
@@ -296,7 +315,7 @@ class SNEIATools():
 
         Args:
             data (np.array):
-                Valores de los electrdos correspondientes a un EEG
+                Valores de los electrodos correspondientes a un EEG
             k (int, optional):
                 Número de Clusters. Por defecto 4.
             iterations (int, optional):
@@ -318,15 +337,23 @@ class SNEIATools():
 
             for point in data:
                 correlations = [np.corrcoef(point, centroid)[0, 1] for centroid in centroids]
-                centroid_assignment.append(np.argmax(correlations))
-
+                print("Correlations:", correlations)
+                centroid_assignment.append(np.argmax(
+                    [abs(elem) for elem in correlations])
+                )
+                print("CENTROID ASIGNAMENT:", centroid_assignment)
                 GEVi = 0
                 for j in range(k):
-                    assigned_points = data[np.array(centroid_assignment) == i]
+                    assigned_points = np.array([
+                        data[index]
+                        for index, value in enumerate(centroid_assignment)
+                        if value == j
+                    ])
+                    print("ASSIGNED POINTS:", assigned_points)
                     if len(assigned_points) > 0:
                         centroids[j] = np.mean(assigned_points, axis=0)
-
-                GEVi += self.calculate_gev_cluster(assigned_points, centroids[i])
+                        print("CENTROIDS:", centroids)
+                        GEVi += self.calculate_gev_cluster(assigned_points, centroids[j])
                 GEV.append(GEVi)
 
         final_matrix = pd.DataFrame(
@@ -335,6 +362,15 @@ class SNEIATools():
         )
 
         return final_matrix, centroids
+
+    def plot_general_microstates(self):
+        """ Grafica los microestados generales
+
+        Returns:
+            None
+        """
+        for ms in self.general_microstates:
+            self.get_topomap(ms, 0, self.ch_names, self.freq, 'standard_1020')
 
     def get_topomap(self, serie, instant, channels, freq: int, standard: str):
         """ Imprime mapa topográfico a partir de una serie de tiempo en un instante dado
