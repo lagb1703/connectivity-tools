@@ -128,6 +128,8 @@ class SNEIATools():
         """
         file_names = os.listdir(folder_path)
 
+        print(file_names)
+
         for file_name in file_names:
             self.get_microstates(f"{folder_path}/{file_name}")
 
@@ -155,7 +157,7 @@ class SNEIATools():
 
         self.general_microstates = self.cluster_of_clusters(data)
         with open(
-            f"{folder_path}/General/general_microstates.csv", 'w', newline=''
+            f"{folder_path}/general_microstates.csv", 'w', newline=''
         ) as general_microstates_file:
             csv_writer = csv.writer(general_microstates_file)
 
@@ -175,7 +177,7 @@ class SNEIATools():
             label, centroids (tuple):
                 Etiquetas de los clusters y centroides
         """
-        cluster_matrix = np.array(data)
+        cluster_matrix = np.array(data[1:]).astype(np.float64)
 
         kmeans = KMeans(n_clusters=4, random_state=1)
         kmeans.fit(cluster_matrix)
@@ -351,7 +353,7 @@ class SNEIATools():
                     ])
                     print("ASSIGNED POINTS:", assigned_points)
                     if len(assigned_points) > 0:
-                        centroids[j] = np.mean(assigned_points, axis=0)
+                        centroids[j] = np.mean(assigned_points, axis=0, dtype=np.float64)
                         print("CENTROIDS:", centroids)
                         GEVi += self.calculate_gev_cluster(assigned_points, centroids[j])
                 GEV.append(GEVi)
