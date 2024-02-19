@@ -12,9 +12,10 @@ from sklearn.cluster import KMeans
 class SNEIATools():
     """ Esta clase se encarga de agrupar los métodos necesarios para el tratamiento de EEG """
 
-    def __init__(self, freq):
+    def __init__(self, freq, ch_names):
         self.general_microstates = None
         self.freq = freq
+        self.ch_names = ch_names
 
     def preprocess_from_sets(self, folder_path):
         """ Preprocesamiento de los datos de un EEG en formato .set
@@ -177,7 +178,9 @@ class SNEIATools():
             label, centroids (tuple):
                 Etiquetas de los clusters y centroides
         """
-        cluster_matrix = np.array(data[1:]).astype(np.float64)
+        cluster_matrix = np.array(data).astype(np.float64)
+
+        print("CLUSTERS: ", cluster_matrix.shape, cluster_matrix)
 
         kmeans = KMeans(n_clusters=4, random_state=1)
         kmeans.fit(cluster_matrix)
@@ -259,7 +262,7 @@ class SNEIATools():
         Args:
             gfp (np.array): Potencia de campo global GFP
 
-        Returns:
+        Returns:|
             tuple (list, list):
                 (index_max_gfp, index_min_gfp)
                 index_max_gfp: Indices de los maximos de la GFP
@@ -330,7 +333,7 @@ class SNEIATools():
                 centroids (np.array):
                     Centroides de los clusters
         """
-        centroids = np.random.randint(-15, 15 + 1, size=(4, 64))
+        centroids = np.random.uniform(-15, 15 + 1, size=(4, 64))
 
         GEV = []
 
@@ -365,6 +368,22 @@ class SNEIATools():
 
         return final_matrix, centroids
 
+    def plot_microstates(self, folder_path):
+        """ Grafica los microestados del path recibido
+
+        Args:
+            folder_path (str):
+                Ruta de la carpeta con los microestados en formato .csv a imprimir
+
+        Returns:
+            None
+        """
+        for file_name in os.listdir(folder_path):
+            microstates = np.array(pd.read_csv(f"{folder_path}/{file_name}", header=None))
+
+            for ms in microstates:
+                self.get_topomap(microstates, ms, self.ch_names, self.freq, 'standard_1020')
+
     def plot_general_microstates(self):
         """ Grafica los microestados generales
 
@@ -372,7 +391,7 @@ class SNEIATools():
             None
         """
         for ms in self.general_microstates:
-            self.get_topomap(ms, 0, self.ch_names, self.freq, 'standard_1020')
+            self.get_topomap(self.general_microstates, ms, self.ch_names, self.freq, 'standard_1020')
 
     def get_topomap(self, serie, instant, channels, freq: int, standard: str):
         """ Imprime mapa topográfico a partir de una serie de tiempo en un instante dado
@@ -402,6 +421,19 @@ class SNEIATools():
         _, ax = plt.subplots(figsize=(5, 5))
         mne.viz.plot_topomap(instant, raw_data.info, axes=ax)
         plt.show()
+
+    def print_topomap(self, ms):
+        """ Imprime mapa topográfico a partir de un microestado
+
+        Args:
+            ms (np.array):
+                Microestado
+        """
+        ch_types_str = ['eeg']*len(self.ch_names)
+
+        info = mne.create_info(ch_names=self.ch_names, sfreq=self.freq, ch_types=ch_types_str)
+
+        mne.viz.plot_topomap(ms, info, cmap="hot", show=True)
 
     def get_occurrence(self, vector):
         """ Retorna la ocurrencia de cada letra en un vector
