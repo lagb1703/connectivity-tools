@@ -379,7 +379,7 @@ class SNEIATools():
             None
         """
         for file_name in os.listdir(folder_path):
-            microstates = np.array(pd.read_csv(f"{folder_path}/{file_name}", header=None))
+            microstates = np.array(pd.read_csv(os.path.join(folder_path, file_name), header=None))
 
             for ms in microstates:
                 self.get_topomap(microstates, ms, self.ch_names, self.freq, 'standard_1020')
