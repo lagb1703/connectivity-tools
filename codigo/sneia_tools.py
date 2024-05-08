@@ -367,6 +367,14 @@ class SNEIATools():
         )
 
         return final_matrix, centroids
+    def plot_general_microstates(self):
+        """ Grafica los microestados generales
+
+        Returns:
+            None
+        """
+        for ms in self.general_microstates:
+            self.get_topomap(self.general_microstates, ms, self.ch_names, self.freq, 'standard_1020')
 
     def plot_microstates(self, folder_path):
         """ Grafica los microestados del path recibido
@@ -379,19 +387,10 @@ class SNEIATools():
             None
         """
         for file_name in os.listdir(folder_path):
-            microstates = np.array(pd.read_csv(os.path.join(folder_path, file_name), header=None))
-
+            microstates = np.array(pd.read_csv(os.path.join(folder_path, file_name), header=0))[:, 1:]
             for ms in microstates:
                 self.get_topomap(microstates, ms, self.ch_names, self.freq, 'standard_1020')
 
-    def plot_general_microstates(self):
-        """ Grafica los microestados generales
-
-        Returns:
-            None
-        """
-        for ms in self.general_microstates:
-            self.get_topomap(self.general_microstates, ms, self.ch_names, self.freq, 'standard_1020')
 
     def get_topomap(self, serie, instant, channels, freq: int, standard: str):
         """ Imprime mapa topográfico a partir de una serie de tiempo en un instante dado
@@ -412,9 +411,11 @@ class SNEIATools():
             standard (str):
                 Tipo de montaje
         """
-        ch_types_str = ['eeg']*len(channels)
-
+        ch_types_str = ['eeg']*(len(channels))#¿para que?
+        # ch_types_str.extend(['eeg']*(len(channels)-1))
+        # names.extend(channels)
         info = mne.create_info(ch_names=channels, sfreq=freq, ch_types=ch_types_str)
+        # print(len(serie.T[0:-1, 1:-1]), '\n', info)
         raw_data = mne.io.RawArray(serie.T, info)
         raw_data.set_montage(standard)
 
