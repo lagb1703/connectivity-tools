@@ -128,12 +128,11 @@ class SNEIATools():
             general_microstates (list):
                 Array con los microestados generales
         """
+        print(os.getcwd())
         file_names = os.listdir(folder_path)
 
-        print(file_names)
 
         for file_name in file_names:
-            os.path.join(folder_path, file_name)
             self.get_microstates(os.path.join(folder_path, file_name))
 
     def get_general_microstates(self, folder_path: str):
@@ -204,10 +203,10 @@ class SNEIATools():
         """
         data_tuples = np.genfromtxt(path, delimiter=",", dtype=float, names=True)
         data = np.array([list(row) for row in data_tuples])
-        print(data.shape)
+        #print(data.shape)
         ch_names = list(data_tuples.dtype.names)
         ch_names.remove("0")
-        print(ch_names, len(ch_names))
+        #print(ch_names, len(ch_names))
 
         indice_muestra = data[:, 0]
 
@@ -227,7 +226,7 @@ class SNEIATools():
         Returns:
             GFP: Potencia de campo global de un grupo de electrodos
         """
-        print(electrodes.shape)
+        #print(electrodes.shape)
         N = electrodes.shape[1]
         v_mean = np.mean(electrodes, axis=1)
         GFP = np.zeros(electrodes.shape[0])
@@ -271,25 +270,18 @@ class SNEIATools():
         """
         np.append(gfp, 0)
         derivative = np.diff(gfp)
+        //mejorar
 
         index_min_derivative = []
         index_max_derivative = []
 
         for i in range(len(derivative) - 1):
             if derivative[i] < 0 and derivative[i + 1] > 0:
-                index_min_derivative.append(i)
+                index_min_derivative.append(i+1)
             if derivative[i] > 0 and derivative[i + 1] < 0:
-                index_max_derivative.append(i)
+                index_max_derivative.append(i+1)
 
-        index_max_gfp = []
-        index_min_gfp = []
-
-        for i in index_max_derivative:
-            index_max_gfp.append(i+1)
-        for i in index_min_derivative:
-            index_min_gfp.append(i+1)
-
-        return index_max_gfp, index_min_gfp
+        return index_min_derivative, index_max_derivative
 
     def calculate_gev_cluster(self, assigned_points, centroid):
         """ Calculates the GEV of a cluster
@@ -304,7 +296,7 @@ class SNEIATools():
             float:
                 GEV del cluster
         """
-        print("assigned_points", assigned_points, " - ", assigned_points.shape)
+        #print("assigned_points", assigned_points, " - ", assigned_points.shape)
         GFP = self.get_gfp(assigned_points)
         num = 0
         den = 0
@@ -343,11 +335,11 @@ class SNEIATools():
 
             for point in data:
                 correlations = [np.corrcoef(point, centroid)[0, 1] for centroid in centroids]
-                print("Correlations:", correlations)
+                #print("Correlations:", correlations)
                 centroid_assignment.append(np.argmax(
                     [abs(elem) for elem in correlations])
                 )
-                print("CENTROID ASIGNAMENT:", centroid_assignment)
+                #print("CENTROID ASIGNAMENT:", centroid_assignment)
                 GEVi = 0
                 for j in range(k):
                     assigned_points = np.array([
@@ -355,10 +347,10 @@ class SNEIATools():
                         for index, value in enumerate(centroid_assignment)
                         if value == j
                     ])
-                    print("ASSIGNED POINTS:", assigned_points)
+                    #print("ASSIGNED POINTS:", assigned_points)
                     if len(assigned_points) > 0:
                         centroids[j] = np.mean(assigned_points, axis=0, dtype=np.float64)
-                        print("CENTROIDS:", centroids)
+                        #print("CENTROIDS:", centroids)
                         GEVi += self.calculate_gev_cluster(assigned_points, centroids[j])
                 GEV.append(GEVi)
 
