@@ -89,7 +89,7 @@ class SNEIATools():
         if not path.endswith(".csv"):
             raise Exception("El archivo debe ser .csv")
 
-        _, _, electrodos = self.read_data(path)
+        _, electrodos = self.read_data(path)
 
         gfp = self.get_gfp(electrodos)
 
@@ -128,7 +128,6 @@ class SNEIATools():
             general_microstates (list):
                 Array con los microestados generales
         """
-        print(os.getcwd())
         file_names = os.listdir(folder_path)
 
 
@@ -202,19 +201,12 @@ class SNEIATools():
                 electrodos es un arreglo de arreglos, cada uno representa los datos de un electrodo
         """
         data_tuples = np.genfromtxt(path, delimiter=",", dtype=float, names=True)
-        data = np.array([list(row) for row in data_tuples])
+        electrodos = np.array([list(row)[1:] for row in data_tuples])
         #print(data.shape)
-        ch_names = list(data_tuples.dtype.names)
-        ch_names.remove("0")
+        ch_names = list(data_tuples.dtype.names[1:])
         #print(ch_names, len(ch_names))
 
-        indice_muestra = data[:, 0]
-
-        electrodos = np.empty((data.shape[0], data.shape[1] - 1))
-        for i in range(data.shape[1] - 1):
-            electrodos[:,i] = data[:, i + 1]
-
-        return ch_names, indice_muestra, electrodos
+        return ch_names, electrodos
 
     def get_gfp(self, electrodes: np.ndarray):
         """ Retorna la GFP de un grupo de electrodos
@@ -586,7 +578,7 @@ class SNEIATools():
                 durations (dict):
                     Diccionario con la duración promedio de cada letra
         """
-        _, _, electrodes = self.read_data(path)
+        _, electrodes = self.read_data(path)
         matched_states = self.correlate_microstates(
             electrodes, self.general_microstates)
 
