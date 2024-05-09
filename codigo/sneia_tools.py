@@ -270,7 +270,7 @@ class SNEIATools():
         """
         np.append(gfp, 0)
         derivative = np.diff(gfp)
-        //mejorar
+        #mejorar
 
         index_min_derivative = []
         index_max_derivative = []
