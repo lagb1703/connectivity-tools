@@ -234,7 +234,7 @@ class SNEIATools():
 
         for i in range(0,N):
             GFP += (electrodes[:,i])**2
-        GFP = GFP/N - v_mean**2
+        GFP = np.sqrt(GFP/N - v_mean**2)
         return GFP
 
     def get_electrodes_value(self, indices: np.array, electrodes: np.array): # type: ignore

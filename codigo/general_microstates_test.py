@@ -8,7 +8,7 @@ ch_names = ["Fp1","AF7","AF3","F1","F3","F5","F7","FT7","FC5","FC3","FC1","C1","
 
 tools = SNEIATools(freq=256, ch_names=ch_names)
 tools.get_centroids(folder_path=path)
-tools.get_general_microstates(folder_path=path_general_microstates)
+#tools.get_general_microstates(folder_path=path_general_microstates)
 
 #print("GENERAL MICROSTATES: ", tools.general_microstates.shape, tools.general_microstates)
 #tools.plot_microstates(path_general_microstates)
