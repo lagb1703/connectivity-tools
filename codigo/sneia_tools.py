@@ -16,6 +16,7 @@ class SNEIATools():
         self.general_microstates = None
         self.freq = freq
         self.ch_names = ch_names
+        mne.set_log_level("WARNING")
 
     def preprocess_from_sets(self, folder_path):
         """ Preprocesamiento de los datos de un EEG en formato .set
@@ -132,7 +133,8 @@ class SNEIATools():
         print(file_names)
 
         for file_name in file_names:
-            self.get_microstates(f"{folder_path}/{file_name}")
+            os.path.join(folder_path, file_name)
+            self.get_microstates(os.path.join(folder_path, file_name))
 
     def get_general_microstates(self, folder_path: str):
         """ Obtiene los microestados generales de un grupo de EEGs en formato .csv
@@ -231,9 +233,8 @@ class SNEIATools():
         GFP = np.zeros(electrodes.shape[0])
 
         for i in range(0,N):
-            GFP = GFP+(electrodes[:,i]-v_mean)**2
-        GFP = np.sqrt(GFP/N)
-
+            GFP += (electrodes[:,i])**2
+        GFP = GFP/N - v_mean**2
         return GFP
 
     def get_electrodes_value(self, indices: np.array, electrodes: np.array): # type: ignore
