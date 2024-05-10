@@ -71,7 +71,7 @@ class SNEIATools():
 
         return csv_path
 
-    def get_Max_electrodes_value(self, GFP):
+    def get_Max_electrodes_value(self, GFP, electrodes):
         np.append(GFP, 0)
         derivative = np.diff(GFP)
         #mejorar
@@ -80,9 +80,9 @@ class SNEIATools():
 
         for i in range(len(derivative) - 1):
             if derivative[i] > 0 and derivative[i + 1] < 0:
-                index_max_derivative.append(derivative[i + 1])
+                index_max_derivative.append(electrodes[i + 1])
 
-        return index_max_derivative
+        return np.array(index_max_derivative).astype(np.float64)
 
     def get_microstates(self, path: str):
         """ Obtiene los microestados de un EEG en formato .csv
@@ -106,9 +106,7 @@ class SNEIATools():
 
         gfp = self.get_gfp(electrodos)
 
-        index_max_gfp, _ = self.index_max_min(gfp)
-
-        electrodes_values = self.get_Max_electrodes_value(gfp).astype(np.float64)
+        electrodes_values = self.get_Max_electrodes_value(gfp, electrodos)
 
         np.random.seed(1)
 
@@ -332,17 +330,20 @@ class SNEIATools():
         centroids = np.random.uniform(-15, 15 + 1, size=(k, 64))
 
         GEV = []
-
-        for i in range(iterations):
+        while iterations > 0:
+            #print("Iteración ", iterations)
+            iterations -= 1
             centroid_assignment = []
 
             for point in data:
-                correlations = [np.corrcoef(point, centroid)[0, 1] for centroid in centroids]
-                #print("Correlations:", correlations)
-                centroid_assignment.append(np.argmax(
-                    [abs(elem) for elem in correlations])
-                )
-                #print("CENTROID ASIGNAMENT:", centroid_assignment)
+                max = 0
+                i = 0
+                for pos, centroid in enumerate(centroids):
+                    value = abs(np.corrcoef(point, centroid)[0, 1])
+                    if value > max:
+                        max = value
+                        i = pos
+                centroid_assignment.append(i)
                 GEVi = 0
                 for j in range(k):
                     assigned_points = np.array([
