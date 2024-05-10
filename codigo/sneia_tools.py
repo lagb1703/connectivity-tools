@@ -308,7 +308,7 @@ class SNEIATools():
             return None
         return num / den
 
-    def modified_k_means(self, data, k=4, iterations=10):
+    def modified_k_means(self, data, k=4, iterations=1000):
         """
         Obtiene los centroides y la matriz de electrodos etiquetada a partir de un EEG
 
@@ -328,12 +328,14 @@ class SNEIATools():
                     Centroides de los clusters
         """
         centroids = np.random.uniform(-15, 15 + 1, size=(k, 64))
-
-        GEV = []
         while iterations > 0:
             #print("Iteración ", iterations)
             iterations -= 1
-            centroid_assignment = []
+            dataCentroid = []
+            i = k
+            while i > 0:
+                i -= 1
+                dataCentroid.append([])
 
             for point in data:
                 max = 0
@@ -343,25 +345,18 @@ class SNEIATools():
                     if value > max:
                         max = value
                         i = pos
-                centroid_assignment.append(i)
-                GEVi = 0
-                for j in range(k):
-                    assigned_points = np.array([
-                        data[index]
-                        for index, value in enumerate(centroid_assignment)
-                        if value == j
-                    ])
-                    #print("ASSIGNED POINTS:", assigned_points)
-                    if len(assigned_points) > 0:
-                        centroids[j] = np.mean(assigned_points, axis=0, dtype=np.float64)
-                        #print("CENTROIDS:", centroids)
-                        GEVi += self.calculate_gev_cluster(assigned_points, centroids[j])
-                GEV.append(GEVi)
-
-        final_matrix = pd.DataFrame(
-            np.hstack((data, np.array(centroid_assignment).reshape(-1, 1))),
-            columns=[f'col_{i}' for i in range(64)] + ['centroid']
-        )
+                dataCentroid[i].append(point)
+                assigned_points = np.array(dataCentroid[i])
+                centroids[i] = np.mean(assigned_points, axis=0, dtype=np.float64)
+            # GEVi = 0
+            # for l in range(k):
+            #     if len(dataCentroid[l]) > 0:
+            #         GEVi += self.calculate_gev_cluster(np.array(dataCentroid[l]), centroids[l])
+            # print(GEVi)
+        final_matrix = 0 #= pd.DataFrame(
+        #     np.hstack((data, np.array(centroid_assignment).reshape(-1, 1))),
+        #     columns=[f'col_{i}' for i in range(64)] + ['centroid']
+        # )
 
         return final_matrix, centroids
     def plot_general_microstates(self):
