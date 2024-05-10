@@ -71,6 +71,19 @@ class SNEIATools():
 
         return csv_path
 
+    def get_Max_electrodes_value(self, GFP):
+        np.append(GFP, 0)
+        derivative = np.diff(GFP)
+        #mejorar
+
+        index_max_derivative = []
+
+        for i in range(len(derivative) - 1):
+            if derivative[i] > 0 and derivative[i + 1] < 0:
+                index_max_derivative.append(derivative[i + 1])
+
+        return index_max_derivative
+
     def get_microstates(self, path: str):
         """ Obtiene los microestados de un EEG en formato .csv
             Además, crea un archivo .csv con los microestados y retorna los valores de los microestados
@@ -95,9 +108,7 @@ class SNEIATools():
 
         index_max_gfp, _ = self.index_max_min(gfp)
 
-        electrodes_values = self.get_electrodes_value(index_max_gfp, electrodos)
-
-        electrodes_values = electrodes_values.astype(np.float64)
+        electrodes_values = self.get_Max_electrodes_value(gfp).astype(np.float64)
 
         np.random.seed(1)
 
@@ -318,7 +329,7 @@ class SNEIATools():
                 centroids (np.array):
                     Centroides de los clusters
         """
-        centroids = np.random.uniform(-15, 15 + 1, size=(4, 64))
+        centroids = np.random.uniform(-15, 15 + 1, size=(k, 64))
 
         GEV = []
 
